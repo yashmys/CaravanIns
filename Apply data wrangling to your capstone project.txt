@@ -1,0 +1,6 @@
+1) The data was clean 
+2) I checked for missing values. 
+3) I converted the response to a categorical value 
+4) I used gather to sumarize the data  for graphics purpose.
+
+
