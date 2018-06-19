@@ -1,0 +1,33 @@
+---
+title: "CapSton Project Proposal"
+author: "Yash"
+date: "June 19, 2018"
+output: html_document
+---
+
+# Header 1 
+What is the problem you want to solve?
+## Header 2
+The aim of this project is to predict if a customer will purchase a Caravan Insurance Policy based on socio‐demographic and product ownership data and. 
+
+
+# Header 1 
+Who is your client and why do they care about this problem? In other words, what will your client DO or DECIDE based on your analysis that they wouldn’t have otherwise?
+## Header 2
+NA
+
+# Header 1 
+What data are you going to use for this? How will you acquire this data?
+## Header 2
+The datasource is Kaggle
+
+# Header 1 
+In brief, outline your approach to solving this problem (knowing that this might change later).
+## Header 2
+This is high dimensional unbalanced dataset. This is a classification problem. I intend to use Random forest to resolve this
+
+# Header 1 
+What are your deliverables? Typically, this would include code, along with a paper and/or a slide deck.
+## Header 2
+Deliverable will be R code
+
