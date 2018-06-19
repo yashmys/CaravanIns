@@ -215,6 +215,197 @@ ggplot(data= temp2, aes (x = PolCount,y = Value,fill = Value)) +
 ###################
 
 
+######################################################################################
+## classification using Random Forest - Unbalanced data, undersampled data, oversampled data 
+######################################################################################
 
 
+# Unbalanced data 
+
+#install.packages("randomForest")
+library(randomForest)
+library(plyr)
+
+
+set.seed(123457)
+
+attach(Caravan_train)
+rf.Unb.Train <-  randomForest( as.factor(Number_of_mobile_home_policies)  ~ . , data = Caravan_train,importance = TRUE )
+print(rf.Unb.Train)
+
+# grab the error matrix 
+
+err <- rf.Unb.Train$err.rate
+head(err)
+dim(rf.Unb.Train$err.rate)
+
+# Look at final OOB error rate (last row in err matrix)
+oob_err <- err[nrow(err),"OOB"]
+print(oob_err)
+
+# Plot the model trained in the previous exercise
+plot(rf.Unb.Train)
+
+# Add a legend since it doesn't have one by default
+legend(x = "right", 
+       legend = colnames(err),
+       fill = 1:ncol(err))
+
+importan(rf.Unb.Train)
+varImpPlot(rf.Unb.Train)
+
+
+CinsTest <-  read.csv.sql("C2.csv","select * from file where ORIGIN = 'test' ", header=TRUE, sep=",")
+# Exclude the  first column 
+Caravan_test <- CinsTest[-1]
+dim(Caravan_test)
+
+names(Caravan_test)
+
+# Generate predicted classes using the model object
+rf.Unb.Prediction <-  predict(rf.Unb.Train,newdata = Caravan_test,type = "class")
+
+# Calculate the confusion matrix for the test set
+install.packages("caret")
+install.packages('e1071', dependencies=TRUE)
+library(caret)
+cm <- confusionMatrix(as.factor(rf.Unb.Prediction),         
+                      reference = as.factor(Caravan_test$Number_of_mobile_home_policies) )
+print(cm)
+
+# Compare test set accuracy to OOB accuracy
+paste0("Test Accuracy: ", cm$overall[1])
+paste0("OOB Accuracy: ", 1 - oob_err)
+
+# Compute the AUC (`actual` must be a binary 1/0 numeric vector)
+#library(ROCR)
+#install.packages("pROC")
+#library(pROC)
+#auc(Caravan_test$Number_of_mobile_home_policies,rf.Unb.Prediction)
+
+
+########   Random Forest using Under sampling
+library(randomForest)
+library(plyr)
+
+install.packages("ROSE")
+library(ROSE)
+attach(Caravan_train)
+caravan_under_data <-  ovun.sample( Number_of_mobile_home_policies ~ . , data = Caravan_train , method = "under",
+                           N = 700 , seed = 1 )$data
+table(caravan_under_data$Number_of_mobile_home_policies)
+
+
+
+attach(caravan_under_data)
+rf.Under.Samp.Train <-  randomForest( as.factor(Number_of_mobile_home_policies)  ~ . , data = caravan_under_data,importance = TRUE )
+print(rf.Under.Samp.Train)
+
+# grab the error matrix 
+
+err <- rf.Under.Samp.Train$err.rate
+head(err)
+dim(rf.Under.Samp.Train$err.rate)
+
+# Look at final OOB error rate (last row in err matrix)
+oob_err <- err[nrow(err),"OOB"]
+print(oob_err)
+
+# Plot the model trained in the previous exercise
+plot(rf.Under.Samp.Train)
+
+# Add a legend since it doesn't have one by default
+legend(x = "right", 
+       legend = colnames(err),
+       fill = 1:ncol(err))
+
+importan(rf.Under.Samp.Train)
+varImpPlot(rf.Under.Samp.Train)
+
+
+
+# Generate predicted classes using the model object
+rf.Under.Samp.Prediction <-  predict(rf.Under.Samp.Train,newdata = Caravan_test,type = "class")
+
+# Calculate the confusion matrix for the test set
+install.packages("caret")
+install.packages('e1071', dependencies=TRUE)
+library(caret)
+cm <- confusionMatrix(as.factor(rf.Under.Samp.Prediction),         
+                      reference = as.factor(Caravan_test$Number_of_mobile_home_policies) )
+print(cm)
+
+# Compare test set accuracy to OOB accuracy
+paste0("Test Accuracy: ", cm$overall[1])
+paste0("OOB Accuracy: ", 1 - oob_err)
+
+# Compute the AUC (`actual` must be a binary 1/0 numeric vector)
+#library(ROCR)
+#install.packages("pROC")
+#library(pROC)
+#auc(Caravan_test$Number_of_mobile_home_policies,rf.Unb.Prediction)
+
+
+
+#######################
+########   Random Forest using over sampling
+library(randomForest)
+library(plyr)
+
+install.packages("ROSE")
+library(ROSE)
+attach(Caravan_train)
+caravan_over_data <-  ovun.sample( Number_of_mobile_home_policies ~ . , data = Caravan_train , method = "over",
+                                   N = 5822 , seed = 1 )$data
+table(caravan_over_data$Number_of_mobile_home_policies)
+
+
+
+attach(caravan_over_data)
+rf.Over.Samp.Train <-  randomForest( as.factor(Number_of_mobile_home_policies)  ~ . , data = caravan_over_data,importance = TRUE )
+print(rf.Over.Samp.Train)
+
+# grab the error matrix 
+
+err <- rf.Over.Samp.Train$err.rate
+head(err)
+dim(rf.Over.Samp.Train$err.rate)
+
+# Look at final OOB error rate (last row in err matrix)
+oob_err <- err[nrow(err),"OOB"]
+print(oob_err)
+
+# Plot the model trained in the previous exercise
+plot(rf.Over.Samp.Train)
+
+# Add a legend since it doesn't have one by default
+legend(x = "right", 
+       legend = colnames(err),
+       fill = 1:ncol(err))
+
+importan(rf.Over.Samp.Train)
+varImpPlot(rf.Over.Samp.Train)
+
+
+
+# Generate predicted classes using the model object
+rf.Over.Samp.Prediction <-  predict(rf.Over.Samp.Train,newdata = Caravan_test,type = "class")
+
+# Calculate the confusion matrix for the test set
+install.packages("caret")
+install.packages('e1071', dependencies=TRUE)
+library(caret)
+cm <- confusionMatrix(as.factor(rf.Over.Samp.Prediction),         
+                      reference = as.factor(Caravan_test$Number_of_mobile_home_policies) )
+print(cm)
+
+# Compare test set accuracy to OOB accuracy
+paste0("Test Accuracy: ", cm$overall[1])
+paste0("OOB Accuracy: ", 1 - oob_err)
+
+# Compute the AUC (`actual` must be a binary 1/0 numeric vector)
+#library(ROCR)
+#install.packages("pROC")
+#library(pROC)
+#auc(Caravan_test$Number_of_mobile_home_policies,rf.Unb.Prediction)
 
