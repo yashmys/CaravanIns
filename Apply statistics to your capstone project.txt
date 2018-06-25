@@ -1,0 +1,21 @@
+
+
+1) Can you count something interesting?
+   Its an unbalanced dataset and number if people who have bought insurance is very less 
+
+
+2) Can you find some trends (high, low, increase, decrease, anomalies)?
+    People who have cars, auto policies and fire policies are more likely to buy caravan insurance
+
+3) Can you make a bar plot or a histogram?
+    Yes both bar plot and histograms since some of the attributes can be better represented by bar and some by histogram
+
+4) Can you compare two related quantities?
+    Yes, the contribution towards insurance policies and policy count is co related 
+5) Can you make a scatterplot?
+   I did histogram
+
+6) Can you make a time-series plot?
+    NA
+7) Having made these plots, what are some insights you get from them? Do you see any correlations? Is there a hypothesis you would like to investigate further? What other questions do they lead you to ask?
+   Yes, there are co relations. It shows a relation ship between auto and fire policies and caravan insurance
