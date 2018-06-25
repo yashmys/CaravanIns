@@ -1,0 +1,413 @@
+---
+title: "Caravan Insurance Challenge"
+author: "Yash"
+date: "June 24, 2018"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+#install.packages("rmarkdown")
+library(randomForest)
+library(plyr)
+library(rmarkdown)
+library(tidyverse)
+library(sqldf)
+library(reshape2)
+library(scales)
+#install.packages("ROSE")
+library(ROSE)
+#install.packages("caret")
+#install.packages('e1071', dependencies=TRUE)
+library(caret)
+```
+
+# Predicting Caravan Insurance Purchases
+
+##  The data is provided by the Caravan Insurance company of its customer base. Some of the customers have already bought  policies for  fire risk , auto , boat etc from Caravan. Using this information we need predict whether they will purchase Caravan Home Insurance 
+
+## This is a classification problem. It is a high dimension dataset with 86 variables. The number of people who have bought insurance is very low, less than 5%. We will use tree based methods like Random forest and Boosted trees to predict.
+
+
+### Load the training data and inspect the data 
+
+```{r message=FALSE}
+Cins <-  read.csv.sql("C1.csv","select * from file where ORIGIN = 'train' ", header=TRUE, sep=",")
+
+### Exclude the  first column 
+Caravan_train <- Cins[-1]
+
+
+### Check the dimensions
+dim(Caravan_train )
+#names(Caravan_train )
+
+
+# Inspect the data 
+str(Caravan_train )
+#head(Caravan_train )
+
+```
+###  check for missing  values 
+
+```{r}
+Missing_Count <-  sum(is.na.data.frame(Caravan_train))
+print(paste ("Missing count -> " , Missing_Count))
+```
+
+### Its an highly unbalanced dataset. This is evident from the below bar chart 
+
+```{r}
+bar_label <- factor(Caravan_train$Number_of_mobile_home_policies  , labels=c("NotPurchased","Purchased"))
+#bar_label
+ggplot(data =  Caravan_train, aes(y = "", x =Number_of_mobile_home_policies , fill = bar_label ) )+ 
+  geom_bar(stat = "identity" ) + 
+  ggtitle("Not Purchased /  Purchased")
+print(paste("Insurance count : 0 -> not having insurance , 1 - Having Insurance"))
+table(Caravan_train$Number_of_mobile_home_policies)
+
+```
+## Data Exploratory
+
+
+###  Education levels of population who have bought insurance. People with low education level are more likey to buy 
+```{r}
+temp1 <-  ""
+templ1 <-  ""
+temp2 <- ""
+grp_data <-  ""
+grp_data <- sqldf(" select High_level_education	 , Medium_level_education , Lower_level_education   from Caravan_train where Number_of_mobile_home_policies  = 1  ")
+class(grp_data)
+dim(grp_data)
+temp2 <- gather(grp_data,Education,Value,1:3)
+
+ggplot(data= temp2, aes (x = Value,y = "",fill = Value)) + 
+  geom_bar(stat = 'identity') +
+  facet_grid(. ~ Education ) + 
+  ggtitle("Education distribution")
+
+
+```
+
+### Distribution of insurance buyers by Car ownership. People with 1 car are more likely to buy 
+```{r}
+
+temp1 <-  ""
+templ1 <-  ""
+temp2 <- ""
+grp_data <-  ""
+grp_data <- sqldf(" select X1_car , X2_cars , No_car from Caravan_train where Number_of_mobile_home_policies  = 1  ")
+class(grp_data)
+dim(grp_data)
+names(grp_data) <- c("1 CAR","2 CAR","0 CAR")
+
+
+temp2 <- gather(grp_data,CarOwnership,Value,1:3)
+
+ggplot(data= temp2, aes (x = Value,y = "",fill = Value)) + 
+  geom_bar(stat = 'identity') +
+  facet_grid(. ~ CarOwnership  ) + 
+  ggtitle("CarOwnership")
+
+``` 
+
+
+### Insurance policy count.  We  can see corelation between people having car policies3 party policy and fire risk policies.
+
+```{r}
+  temp1 <-  ""
+templ1 <-  ""
+temp2 <- ""
+grp_data <-  ""
+grp_data <- sqldf(" select 
+				   private_third_party_insurance                
+, third_party_insurance_firms                  
+, third_party_insurane_agriculture             
+, car_policies                                 
+, delivery_van_policies                        
+, Contribution_motorcycle_scooter              
+, lorry_policies                               
+, trailer_policies                             
+, tractor_policies                             
+, agricultural_machines_policies               
+, moped_policies                               
+, life_insurances                              
+, private_accident_insurance_policies          
+, family_accidents_insurance_policies          
+, disability_insurance_policies                
+, fire_policies                                
+, surfboard_policies                           
+, boat_policies                                
+, bicycle_policies                             
+, property_insurance_policies                  
+, social_security_insurance_policies           
+
+ from Caravan_train where Number_of_mobile_home_policies  = 1  ")
+class(grp_data)
+dim(grp_data)
+
+temp2 <- gather(grp_data,PolCount,Value,1:21)
+
+ggplot(data= temp2, aes (x = PolCount,y = Value,fill = Value)) + 
+  geom_bar(stat = 'identity' )  +
+  ggtitle("Insurance Policy Contribution") + 
+  coord_flip()
+
+
+```
+
+
+
+
+
+
+### From the GBM variance influence chart, we will  select only 56  variables that have impact  The GBM variance influence chart was generated separately and will be  included at a later state
+
+```{r}
+Caravan_train_SUB56  <-  subset(Caravan_train, select = c(   car_policies   
+                                                      ,Lower_level_education 
+                                                      ,fire_policies                         
+  ,Average_income                        
+  ,private_third_party_insurance         
+  ,X1_car                                
+  ,Social_class_C                        
+  ,Other_religion                        
+  ,boat_policies                         
+  ,No_car                                
+  ,Customer_Subtype                      
+  ,Middle_management                     
+  ,Income_75.122.000                     
+  ,tractor_policies                      
+  ,Social_class_B1                       
+  ,Social_class_D                        
+  ,High_level_education                  
+  ,Protestant                            
+  ,Medium_level_education                
+  ,bicycle_policies                      
+  ,Income_45.75.000                      
+  ,Unskilled_labourers                   
+  ,Farmer                                
+  ,Purchasing_power                      
+  ,Number_of_car_policies                
+  ,Income_._30                           
+  ,Customer_main_type                    
+  ,Household_with_children               
+  ,Income_30.45.000                      
+  ,Rented_house                          
+  ,moped_policies                        
+  ,Married                               
+  ,Social_class_B2                       
+  ,X2_cars                               
+  ,Skilled_labourers                     
+  ,Social_class_A                        
+  ,Household_without_children            
+  ,High_status                           
+  ,No_religion                           
+  ,Entrepreneur                          
+  ,social_security_insurance_policies    
+  ,Home_owners                           
+  ,third_party_insurane_agriculture      
+  ,Living_together                       
+  ,Avg_size_household                    
+  ,Avg_age                               
+  ,Number_of_houses                      
+  ,Singles                               
+  ,Roman_catholic                        
+  ,Other_relation                        
+  ,Income_.123.000                       
+  ,life_insurances                       
+  ,National_Health_Service               
+  ,Contribution_motorcycle_scooter       
+  ,Private_health_insurance              
+  ,Number_of_life_insurances  , Number_of_mobile_home_policies   )  )  
+
+dim(Caravan_train_SUB56)
+head(Caravan_train_SUB56)
+                                                      
+```
+
+
+## CLASSIFICATION USING RANDOM  FOREST
+###   STEP 1  - USE UNBALANCED DATA 
+###   STEP 2  - USE UNDER SAMPLED DATA 
+###   STEP 3 - PERFORMANCE TUNING 
+   
+### RF USING UNBALANCED DATA
+```{r}
+# use unbalanced data 
+
+
+
+set.seed(123457)
+
+attach(Caravan_train_SUB56)
+rf.Unb.Train <-  randomForest( as.factor(Number_of_mobile_home_policies)  ~ . , data = Caravan_train_SUB56,importance = TRUE )
+print(rf.Unb.Train)
+
+# grab the error matrix 
+
+err <- rf.Unb.Train$err.rate
+head(err)
+dim(rf.Unb.Train$err.rate)
+
+# Look at final OOB error rate (last row in err matrix)
+oob_err <- err[nrow(err),"OOB"]
+print(oob_err)
+
+# Plot the model trained in the previous exercise
+plot(rf.Unb.Train)
+
+# Add a legend since it doesn't have one by default
+legend(x = "right", 
+       legend = colnames(err),
+       fill = 1:ncol(err))
+
+#important(rf.Unb.Train)
+varImpPlot(rf.Unb.Train)
+
+
+CinsTest <-  read.csv.sql("C2.csv","select * from file where ORIGIN = 'test' ", header=TRUE, sep=",")
+
+
+# Exclude the  first column 
+# Caravan_test <- CinsTest[-1]
+
+Caravan_test <-  subset(CinsTest, select = c(   car_policies   
+                                                      ,Lower_level_education 
+                                                      ,fire_policies                         
+  ,Average_income                        
+  ,private_third_party_insurance         
+  ,X1_car                                
+  ,Social_class_C                        
+  ,Other_religion                        
+  ,boat_policies                         
+  ,No_car                                
+  ,Customer_Subtype                      
+  ,Middle_management                     
+  ,Income_75.122.000                     
+  ,tractor_policies                      
+  ,Social_class_B1                       
+  ,Social_class_D                        
+  ,High_level_education                  
+  ,Protestant                            
+  ,Medium_level_education                
+  ,bicycle_policies                      
+  ,Income_45.75.000                      
+  ,Unskilled_labourers                   
+  ,Farmer                                
+  ,Purchasing_power                      
+  ,Number_of_car_policies                
+  ,Income_._30                           
+  ,Customer_main_type                    
+  ,Household_with_children               
+  ,Income_30.45.000                      
+  ,Rented_house                          
+  ,moped_policies                        
+  ,Married                               
+  ,Social_class_B2                       
+  ,X2_cars                               
+  ,Skilled_labourers                     
+  ,Social_class_A                        
+  ,Household_without_children            
+  ,High_status                           
+  ,No_religion                           
+  ,Entrepreneur                          
+  ,social_security_insurance_policies    
+  ,Home_owners                           
+  ,third_party_insurane_agriculture      
+  ,Living_together                       
+  ,Avg_size_household                    
+  ,Avg_age                               
+  ,Number_of_houses                      
+  ,Singles                               
+  ,Roman_catholic                        
+  ,Other_relation                        
+  ,Income_.123.000                       
+  ,life_insurances                       
+  ,National_Health_Service               
+  ,Contribution_motorcycle_scooter       
+  ,Private_health_insurance              
+  ,Number_of_life_insurances  , Number_of_mobile_home_policies   )  )  
+
+  
+  
+dim(Caravan_test)
+
+names(Caravan_test)
+
+# Generate predicted classes using the model object
+rf.Unb.Prediction <-  predict(rf.Unb.Train,newdata = Caravan_test,type = "class")
+
+# Calculate the confusion matrix for the test set
+install.packages("caret")
+install.packages('e1071', dependencies=TRUE)
+library(caret)
+cm <- confusionMatrix(as.factor(rf.Unb.Prediction),         
+                      reference = as.factor(Caravan_test$Number_of_mobile_home_policies) )
+print(cm)
+
+# Compare test set accuracy to OOB accuracy
+paste0("Test Accuracy: ", cm$overall[1])
+paste0("OOB Accuracy: ", 1 - oob_err)
+
+
+```
+
+### RF USING UNDER SAMPLED DATA 
+```{r}
+
+attach(Caravan_train_SUB56)
+caravan_under_data <-  ovun.sample( Number_of_mobile_home_policies ~ . , data = Caravan_train_SUB56 , method = "under",
+                           N = 700 , seed = 1 )$data
+table(caravan_under_data$Number_of_mobile_home_policies)
+
+
+
+attach(caravan_under_data)
+rf.Under.Samp.Train <-  randomForest( as.factor(Number_of_mobile_home_policies)  ~ . , data = caravan_under_data,importance = TRUE )
+print(rf.Under.Samp.Train)
+
+# grab the error matrix 
+
+err <- rf.Under.Samp.Train$err.rate
+head(err)
+dim(rf.Under.Samp.Train$err.rate)
+
+# Look at final OOB error rate (last row in err matrix)
+oob_err <- err[nrow(err),"OOB"]
+print(oob_err)
+
+# Plot the model trained in the previous exercise
+plot(rf.Under.Samp.Train)
+
+# Add a legend since it doesn't have one by default
+legend(x = "right", 
+       legend = colnames(err),
+       fill = 1:ncol(err))
+
+#importan(rf.Under.Samp.Train)
+varImpPlot(rf.Under.Samp.Train)
+
+
+
+# Generate predicted classes using the model object
+rf.Under.Samp.Prediction <-  predict(rf.Under.Samp.Train,newdata = Caravan_test,type = "class")
+
+# Calculate the confusion matrix for the test set
+
+cm <- confusionMatrix(as.factor(rf.Under.Samp.Prediction),         
+                      reference = as.factor(Caravan_test$Number_of_mobile_home_policies) )
+print(cm)
+
+# Compare test set accuracy to OOB accuracy
+paste0("Test Accuracy: ", cm$overall[1])
+paste0("OOB Accuracy: ", 1 - oob_err)
+
+# Compute the AUC (`actual` must be a binary 1/0 numeric vector)
+#library(ROCR)
+#install.packages("pROC")
+#library(pROC)
+#auc(Caravan_test$Number_of_mobile_home_policies,rf.Unb.Prediction)
+```

@@ -8,7 +8,7 @@ library(scales)
 
 #load the caravan insurance data 
 
-Cins <-  read.csv.sql("C2.csv","select * from file where ORIGIN = 'train' ", header=TRUE, sep=",")
+Cins <-  read.csv.sql("C3.csv","select * from file where ORIGIN = 'train' ", header=TRUE, sep=",")
 
 
 #head(caravan_ins_data)
